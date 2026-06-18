@@ -10,6 +10,8 @@ import type { UserRole } from "./types";
 const AUTH_USER_STORAGE_KEY = "english-day.auth-user";
 const REGISTERED_USERS_STORAGE_KEY = "english-day.registered-users";
 
+const normalizeEmail = (email: string) => email.trim().toLowerCase();
+
 function readStoredJson<T>(key: string, fallback: T): T {
   if (typeof window === "undefined") {
     return fallback;
@@ -119,8 +121,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [registeredUsers]);
 
   const login = (role: UserRole, email?: string) => {
-    if (email && registeredUsers[email]) {
-      setUser(registeredUsers[email]);
+    const normalizedEmail = email ? normalizeEmail(email) : "";
+
+    if (normalizedEmail && registeredUsers[normalizedEmail]) {
+      setUser(registeredUsers[normalizedEmail]);
     } else {
       // Fallback to demo users by role for backwards compatibility
       const demoUser = Object.values(registeredUsers).find(
@@ -131,6 +135,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const registerUser = (userData: RegisterUserData) => {
+    const normalizedEmail = normalizeEmail(userData.email);
+
+    if (!normalizedEmail) {
+      throw new Error("Email is required.");
+    }
+
+    if (userData.role !== "judge" && registeredUsers[normalizedEmail]) {
+      throw new Error("Email already exists.");
+    }
+
     const resolvedName =
       userData.role === "school"
         ? userData.schoolName || userData.schoolShortName || userData.name
@@ -139,7 +153,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const newUser: AuthUser = {
       id: `user-${Date.now()}`,
       name: resolvedName,
-      email: userData.email,
+      email: normalizedEmail,
       role: userData.role,
       schoolId:
         userData.role === "school" ? `school-${Date.now()}` : userData.schoolId,
@@ -148,7 +162,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     setRegisteredUsers((prev) => ({
       ...prev,
-      [userData.email]: newUser,
+      [normalizedEmail]: newUser,
     }));
   };
 

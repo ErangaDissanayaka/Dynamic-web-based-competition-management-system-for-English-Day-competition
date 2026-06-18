@@ -359,16 +359,16 @@ export const GRADE_OPTIONS = Array.from(
 
 export const COMPETITION_LEVELS = [
   {
-    key: "school",
-    label: "School Level",
-    description:
-      "First-round selection within each school before advancing the strongest entries.",
-  },
-  {
     key: "zonal",
     label: "Zonal Level",
     description:
       "Local inter-school competition coordinated across the education zone.",
+  },
+  {
+    key: "district",
+    label: "District Level",
+    description:
+      "District-wide contest featuring top performers from zonal competitions.",
   },
   {
     key: "provincial",
@@ -406,6 +406,10 @@ export function getCategoryGradeBand(category: Category) {
 }
 
 export function getMaxSlotsForCategory(category: Category) {
+  if (isDramaCategory(category)) {
+    return 10;
+  }
+
   const definition = CATEGORY_DEFINITIONS[category];
   if (!definition) {
     return 13; // Default to all grades

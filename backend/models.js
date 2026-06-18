@@ -7,7 +7,6 @@ const userSchema = new mongoose.Schema(
     email: {
       type: String,
       required: true,
-      unique: true,
       lowercase: true,
       trim: true,
     },
@@ -28,6 +27,9 @@ const userSchema = new mongoose.Schema(
   },
   { versionKey: false },
 );
+
+// Note: uniqueness for non-judge roles is enforced in application logic
+// to avoid partial-index compatibility issues across deployment targets.
 
 const schoolSchema = new mongoose.Schema(
   {

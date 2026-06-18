@@ -73,6 +73,7 @@ interface DataStore {
     eventId: string,
     category?: Category,
   ) => Array<{
+    studentId: string;
     rank: number;
     studentName: string;
     schoolName: string;
@@ -369,7 +370,10 @@ export function DataProvider({ children }: { children: ReactNode }) {
         const student = students.find((st) => st.id === score.studentId);
         const school = schools.find((sc) => sc.id === student?.schoolId);
         return {
+          studentId: student?.id || "",
           rank: 0,
+          grade: student?.grade || "Unknown",
+          gradeRank: 0,
           studentName: student?.name || "Unknown",
           schoolName: school?.shortName || "?",
           schoolColor: school?.color || "#999",
@@ -384,8 +388,12 @@ export function DataProvider({ children }: { children: ReactNode }) {
         };
       });
       entries.sort((a, b) => b.avgScore - a.avgScore);
+      const gradeRanks = new Map<string, number>();
       entries.forEach((entry, i) => {
         entry.rank = i + 1;
+        const nextGradeRank = (gradeRanks.get(entry.grade) || 0) + 1;
+        gradeRanks.set(entry.grade, nextGradeRank);
+        entry.gradeRank = nextGradeRank;
       });
       return entries;
     },

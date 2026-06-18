@@ -95,7 +95,7 @@ export default function SignIn() {
 
     try {
       const response = await loginRequest({
-        email,
+        email: email.trim(),
         password,
         role: selectedRole,
       });

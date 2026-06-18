@@ -42,6 +42,10 @@ const nextId = (prefix) =>
   `${prefix}-${Date.now()}-${Math.floor(Math.random() * 10000)}`;
 
 const normalizeCategory = (category) => String(category || "").trim();
+const normalizeEmail = (email) =>
+  String(email || "")
+    .trim()
+    .toLowerCase();
 
 const asyncHandler = (handler) => (req, res, next) => {
   Promise.resolve(handler(req, res, next)).catch(next);
@@ -395,9 +399,18 @@ app.post(
         .json({ message: "Email, password and role are required." });
     }
 
-    let user = await UserModel.findOne({ email: String(email).toLowerCase() })
+    const normalizedEmail = normalizeEmail(email);
+
+    const matchingUsers = await UserModel.find({
+      email: normalizedEmail,
+      role: String(role),
+    })
       .select("-_id")
       .lean();
+
+    let user = matchingUsers.find(
+      (candidate) => candidate.password === password,
+    );
 
     if (!user || user.password !== password) {
       return res.status(401).json({ message: "Invalid email or password." });
@@ -507,9 +520,19 @@ app.post(
         .json({ message: "Email, password and role are required." });
     }
 
-    const normalizedEmail = String(email).toLowerCase();
-    const existing = await UserModel.findOne({ email: normalizedEmail }).lean();
-    if (existing) {
+    const normalizedEmail = normalizeEmail(email);
+    if (!normalizedEmail) {
+      return res.status(400).json({ message: "Email is required." });
+    }
+
+    const existingUsers = await UserModel.find({ email: normalizedEmail })
+      .select("role -_id")
+      .lean();
+
+    if (
+      existingUsers.some((existingUser) => existingUser.role !== "judge") ||
+      (role !== "judge" && existingUsers.length > 0)
+    ) {
       return res.status(409).json({ message: "Email already exists." });
     }
 
@@ -998,22 +1021,6 @@ app.post(
       });
     }
 
-    // Check drama event limit (max 10 students total across all drama categories)
-    if (isDramaCategory(normalizedCategory)) {
-      const dramaCount = await StudentModel.countDocuments({
-        schoolId: String(schoolId),
-        eventId: String(eventId),
-        category: { $in: ["drama_primary", "drama_junior", "drama_senior"] },
-      });
-
-      if (dramaCount >= 10) {
-        return res.status(409).json({
-          message:
-            "Maximum 10 students for drama events are allowed for each school.",
-        });
-      }
-    }
-
     const student = await StudentModel.create({
       id: nextId("st"),
       name: trimmedName,
@@ -1251,8 +1258,17 @@ app.use((error, _req, res, _next) => {
 });
 
 async function startServer() {
-  await connectDatabase();
-  await seedDatabase();
+  try {
+    await connectDatabase();
+    await seedDatabase();
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error(
+      "Failed to connect to MongoDB. Check MONGODB_URI, Atlas cluster status, and network access.",
+      error,
+    );
+    throw error;
+  }
 
   app.listen(PORT, "0.0.0.0", () => {
     // eslint-disable-next-line no-console

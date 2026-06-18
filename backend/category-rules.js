@@ -194,6 +194,10 @@ export function getCategoryGradeBand(category) {
 }
 
 export function getMaxSlotsForCategory(category) {
+  if (isDramaCategory(category)) {
+    return 10;
+  }
+
   const { minGrade, maxGrade } = getCategoryRule(category);
   return maxGrade - minGrade + 1;
 }

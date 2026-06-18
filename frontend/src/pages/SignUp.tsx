@@ -159,7 +159,7 @@ export default function SignUp() {
     try {
       const userData = {
         name: accountName,
-        email: formData.email,
+        email: formData.email.trim(),
         password: formData.password,
         role: selectedRole,
         schoolId: selectedRole === "student" ? formData.schoolId : undefined,

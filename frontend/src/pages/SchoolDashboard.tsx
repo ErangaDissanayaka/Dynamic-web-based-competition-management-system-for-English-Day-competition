@@ -130,8 +130,11 @@ export default function SchoolDashboard() {
       return;
     }
     const catStudents = myStudents.filter((s) => s.category === addCategory);
-    if (catStudents.length >= 3) {
-      toast.error("Maximum 3 students per category reached");
+    const maxSlots = getMaxSlotsForCategory(addCategory);
+    if (catStudents.length >= maxSlots) {
+      toast.error(
+        `Maximum ${maxSlots} students for ${getCategoryLabel(addCategory)} reached`,
+      );
       return;
     }
     if (!isGradeAllowedForCategory(addCategory, newGrade)) {
@@ -387,16 +390,6 @@ export default function SchoolDashboard() {
             const maxSlots = getMaxSlotsForCategory(cat);
             let spotsLeft = maxSlots - catStudents.length;
             let displayText = `${spotsLeft} spots left`;
-
-            // Check drama limit (max 10 students across all drama categories)
-            if (isDramaCategory(cat)) {
-              const allDramaStudents = myStudents.filter((s) =>
-                isDramaCategory(s.category),
-              );
-              const dramaSpotsLeft = 10 - allDramaStudents.length;
-              spotsLeft = Math.min(spotsLeft, dramaSpotsLeft);
-              displayText = `${dramaSpotsLeft} drama spots left`;
-            }
             return (
               <motion.div
                 key={cat}

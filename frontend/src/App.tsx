@@ -49,6 +49,14 @@ const App = () => (
                 }
               />
               <Route
+                path="/admin/events/:eventId/edit"
+                element={
+                  <ProtectedRoute allowedRoles={["admin"]}>
+                    <AdminDashboard />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
                 path="/admin/schools"
                 element={
                   <ProtectedRoute allowedRoles={["admin"]}>

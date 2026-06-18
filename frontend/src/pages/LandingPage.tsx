@@ -10,7 +10,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { CountdownTimer } from "@/components/CountdownTimer";
-import { events, pastWinners, students } from "@/lib/mock-data";
+import { events, students } from "@/lib/mock-data";
 import { useData } from "@/lib/data-store";
 import {
   COMPETITION_LEVELS,
@@ -45,11 +45,56 @@ function selectActiveEvent(allEvents: Event[]) {
   )[0];
 }
 
+function getHallOfFameEntries(
+  allEvents: Event[],
+  getLeaderboard: (eventId: string) => Array<{
+    studentId: string;
+    rank: number;
+    studentName: string;
+    schoolName: string;
+    schoolColor: string;
+    category: string;
+    avgScore: number;
+    scores: {
+      delivery: number;
+      content: number;
+      language: number;
+      presentation: number;
+    };
+  }>,
+) {
+  const sorted = allEvents
+    .filter((event) => event.status === "results_published")
+    .flatMap((event) =>
+      getLeaderboard(event.id).map((entry) => ({
+        ...entry,
+        year: event.year,
+      })),
+    )
+    .sort((a, b) => b.avgScore - a.avgScore);
+
+  const unique: typeof sorted = [];
+  const seen = new Set<string>();
+  for (const entry of sorted) {
+    if (!entry.studentId || seen.has(entry.studentId)) continue;
+    unique.push(entry);
+    seen.add(entry.studentId);
+    if (unique.length === 3) break;
+  }
+
+  return unique;
+}
+
 export default function LandingPage() {
   const navigate = useNavigate();
-  const { events: liveEvents, students: liveStudents } = useData();
+  const {
+    events: liveEvents,
+    students: liveStudents,
+    getLeaderboard,
+  } = useData();
   const sourceEvents = liveEvents.length > 0 ? liveEvents : events;
   const sourceStudents = liveStudents.length > 0 ? liveStudents : students;
+  const hallOfFameEntries = getHallOfFameEntries(sourceEvents, getLeaderboard);
 
   const currentEvent = selectActiveEvent(sourceEvents);
   const currentCategories = getOrderedCategories(
@@ -246,9 +291,9 @@ export default function LandingPage() {
             <h2 className="font-display text-3xl font-bold">Hall of Fame</h2>
           </div>
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6 max-w-4xl mx-auto">
-            {pastWinners.slice(0, 3).map((winner, index) => (
+            {hallOfFameEntries.map((winner, index) => (
               <motion.div
-                key={index}
+                key={`${winner.studentName}-${winner.studentId}-${winner.category}-${winner.year}`}
                 initial={{ opacity: 0, scale: 0.95 }}
                 whileInView={{ opacity: 1, scale: 1 }}
                 viewport={{ once: true }}
@@ -259,12 +304,14 @@ export default function LandingPage() {
                   {index === 0 ? "🥇" : index === 1 ? "🥈" : "🥉"}
                 </div>
                 <p className="font-display text-lg font-bold">
-                  {winner.winner}
+                  {winner.studentName}
                 </p>
                 <p className="text-sm text-primary-foreground/60">
-                  {winner.school} · {winner.category}
+                  {winner.schoolName} · {getCategoryLabel(winner.category)}
                 </p>
-                <p className="text-gold font-bold mt-2">{winner.score} pts</p>
+                <p className="text-gold font-bold mt-2">
+                  {winner.avgScore} pts
+                </p>
                 <p className="text-xs text-primary-foreground/40 mt-1">
                   {winner.year}
                 </p>

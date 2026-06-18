@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useLocation } from "react-router-dom";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { motion } from "framer-motion";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { useData } from "@/lib/data-store";
@@ -497,9 +497,11 @@ export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState("overview");
 
   const location = useLocation();
+  const navigate = useNavigate();
+  const { eventId: routeEventId } = useParams();
 
   useEffect(() => {
-    if (location.pathname === "/admin/events") {
+    if (location.pathname.startsWith("/admin/events")) {
       setActiveTab("overview");
       window.setTimeout(() => {
         document
@@ -517,6 +519,17 @@ export default function AdminDashboard() {
       setActiveTab("overview");
     }
   }, [location.pathname]);
+
+  useEffect(() => {
+    if (!routeEventId || editingEventId === routeEventId) {
+      return;
+    }
+
+    const eventToEdit = events.find((event) => event.id === routeEventId);
+    if (eventToEdit) {
+      openEditEventDialog(eventToEdit);
+    }
+  }, [editingEventId, events, routeEventId]);
 
   const [eventForm, setEventForm] = useState<EventFormState>(
     createEmptyEventForm(),
@@ -561,6 +574,16 @@ export default function AdminDashboard() {
     setCustomCategoryInput("");
   };
 
+  const closeEventDialog = () => {
+    if (routeEventId) {
+      resetEventDialog();
+      navigate("/admin/events");
+      return;
+    }
+
+    resetEventDialog();
+  };
+
   const openCreateEventDialog = () => {
     setEditingEventId(null);
     setEventForm(createEmptyEventForm());
@@ -581,6 +604,10 @@ export default function AdminDashboard() {
     });
     setCustomCategoryInput("");
     setEventDialogOpen(true);
+
+    if (routeEventId !== event.id) {
+      navigate(`/admin/events/${event.id}/edit`, { replace: true });
+    }
   };
 
   const handleSaveEvent = async () => {
@@ -601,12 +628,11 @@ export default function AdminDashboard() {
       toast.error("Please select at least one category");
       return;
     }
-    const payload = {
+    const eventPayload = {
       name: eventForm.name,
       year: eventForm.year,
       date: eventForm.date,
       venue: eventForm.venue,
-      status: "upcoming" as EventStatus,
       registrationDeadline: eventForm.registrationDeadline,
       categories: [
         ...eventForm.selectedCategories,
@@ -615,10 +641,7 @@ export default function AdminDashboard() {
     };
 
     if (editingEventId) {
-      const ok = await updateEvent(editingEventId, {
-        ...payload,
-        status: "upcoming",
-      });
+      const ok = await updateEvent(editingEventId, eventPayload);
       if (!ok) {
         toast.error("Could not update event. Please try again.");
         return;
@@ -626,10 +649,14 @@ export default function AdminDashboard() {
 
       toast.success(`Event "${eventForm.name}" updated!`);
       resetEventDialog();
+      navigate("/admin/events");
       return;
     }
 
-    const result = await addEvent(payload);
+    const result = await addEvent({
+      ...eventPayload,
+      status: "upcoming" as EventStatus,
+    });
     if (!result.ok) {
       toast.error("Could not create event. Please try again.");
       return;
@@ -747,7 +774,7 @@ export default function AdminDashboard() {
                 open={eventDialogOpen}
                 onOpenChange={(open) => {
                   if (!open) {
-                    resetEventDialog();
+                    closeEventDialog();
                     return;
                   }
                   setEventDialogOpen(true);
